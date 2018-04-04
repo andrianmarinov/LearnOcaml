@@ -60,6 +60,7 @@ let many p =
     aux [] cs
 
 (* val string_p : string -> string parser *)
+(* This sux. Make it parse Hello World *)
 let string_p s =
   mk_parser @@ fun cs ->
     if (String.to_list s) = cs then Some(s, [])
@@ -80,14 +81,21 @@ let filter f p =
       else None
     | None -> None
 
+let (>>) f g = fun x -> g (f x) 
+
 (* val maybe : 'a parser -> ('a option) parser *)
-let maybe p = 
+let maybe p = mk_parser @@ fun cs ->
+  p.run cs
+  |> Option.map (fun (x,cs) -> (Some x, cs))
+  
+(*
   mk_parser @@ fun cs ->
     match p.run cs with
     | Some(x, xs) -> Some( Some(x), xs)
     | None -> None
+    *)
 
-(* val many_one : 'a parser -> ('a list) parser *)
+(* val many_one : 'a parser -> ('a list) parser * MAKE IT WORK + REWRITE IN BIND *)
 let many_one p =
   mk_parser @@ fun cs ->
     let rec aux acc cs = 
@@ -99,9 +107,13 @@ let many_one p =
     in
     aux [] cs
 (* ?????????????????????????????????????????? *)
+let many_one1 p =
+  p >>= fun x ->
+  many p >>= fun xs ->
+  yield (x::xs)
+  
 
-
-(* val sequence : ('a parser) list -> ('a list) parser *)
+(* val sequence : ('a parser) list -> ('a list) parser * REWRITE WITH BIND *)
 let sequence p_list =
   mk_parser @@ fun cs ->
     let rec aux acc p_list cs =
@@ -124,4 +136,21 @@ let result = run p_seq "absd";;
 
 
 (* val bind : ('a -> 'b parser) -> 'a parser -> 'b parser *)
+let bind f p =
+  mk_parser @@ fun cs ->
+  match p.run cs with
+  | Some(x, xs) -> 
+    let p2 = f x in 
+    p2.run xs
+  | None -> None
 
+let (>>=) p f = bind f p
+
+let my_parser =
+  string_p "hello" >>= fun _ ->
+  string_p "world" >>= fun _ ->
+  int_p            >>= fun n ->
+  ...
+
+
+(* Build Polish Notation Calc *)
